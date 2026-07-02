@@ -1172,9 +1172,7 @@ POST https://agentseller.temu.com/api/flash/real_picture/pre_verification
 - 请求中的图片必须已经上传完成，接口只提交图片 URL、SKU、位置和图片类型。
 - 若 `check_result=false`，页面会展示异常规则，并可能提供“深度识别”等后续操作入口。
 
-## 2. JIT开通
-
-### 2.1 批量开通JIT按钮
+## 2. 上新调价
 
 页面地址：
 
@@ -1182,210 +1180,196 @@ POST https://agentseller.temu.com/api/flash/real_picture/pre_verification
 https://agentseller.temu.com/newon/product-select
 ```
 
-点击页面上方插件区域的“批量开通JIT”按钮后，插件先校验会员/权限，再按当前筛选条件获取商品 SKC 数据。数据获取完成后会打开 `openJitGoods` 弹窗，在弹窗中点击“一键开通所有JIT”，并在最终确认弹窗点击“确定”后触发真实批量开通接口。
+本部分记录“上新生命周期管理”页面中，点击第一个商品行右侧“发起调价”按钮，并在调价弹窗中填写 3 个 `30.37` 后点击左下角“确认调价”的接口。最终确认调价接口已在请求发出前拦截并中止，未实际提交调价。
 
-本次取证已在最终确认前挂载拦截，只拦截真实状态变更接口，未实际开通 JIT。
+### 2.1 第一个商品发起调价按钮
 
-#### 2.1.1 会员/权限校验
+在商品表格第一行右侧“操作”列点击：
+
+```text
+发起调价
+```
+
+点击后打开调价弹窗，并触发调价信息、优惠券门槛、调价原因等前置查询接口。
+
+#### 2.1.1 商品调价信息查询
 
 **接口地址**
 
 ```http
-POST https://www.tupianfanyi.com/users/getUserVipInfo
+POST https://agentseller.temu.com/api/kiana/mms/magneto/price-adjust/product-adjust-query
 ```
 
-**请求头**
+**说明**
 
+用于获取当前商品可调价的 SKC/SKU、原申报价格、可填写价格等调价弹窗初始化数据。本次抓包中该请求体未由 CDP 返回，浏览器实际请求使用当前登录态、MallId、页面运行时签名等上下文。
 
-| 参数           | 值                    | 说明                                          |
-| -------------- | --------------------- | --------------------------------------------- |
-| `Content-Type` | `application/json`    | 请求体为 JSON                                 |
-| `Cookie`       | `[插件登录态 Cookie]` | 使用当前浏览器登录态；文档中不保存完整 Cookie |
+#### 2.1.2 优惠券最小金额查询
+
+**接口地址**
+
+```http
+POST https://agentseller.temu.com/api/kiana/gamblers/marketing/coupon/min/amount
+```
+
+**说明**
+
+用于调价流程中营销/券相关金额约束查询。本次抓包中该请求体未由 CDP 返回。
+
+#### 2.1.3 调价原因列表查询
+
+**接口地址**
+
+```http
+POST https://agentseller.temu.com/api/kiana/mms/gmp/bg/magneto/api/price/adjust/reason/list
+```
+
+**说明**
+
+用于获取调价弹窗中的“调价原因”下拉选项。本次页面默认选中：
+
+```text
+降价提升竞争力
+```
+
+后续确认调价请求中对应字段为：
+
+```json
+{
+  "adjustReason": 3
+}
+```
+
+#### 2.1.4 灰度/权限匹配查询
+
+**接口地址**
+
+```http
+POST https://agentseller.temu.com/lollipop/gray/agent/seller/batchMatchBySupplierIdsWithMulGray
+```
+
+**说明**
+
+用于页面功能灰度、权限或供应商维度能力匹配。本次抓包中该请求体未由 CDP 返回。
+
+**请求头说明**
+
+| 参数 | 值 | 说明 |
+| --- | --- | --- |
+| `Content-Type` | `application/json` | 请求体为 JSON |
+| `Cookie` | `[登录态 Cookie]` | 使用当前浏览器登录态，文档中不保存完整 Cookie |
+| `Mallid` | `634418220627643` | 当前店铺/主体 ID，本次抓包上下文 |
+| `anti-content` / `anti-token` | `[REDACTED]` | 页面运行时生成，文档中不保存具体值 |
+
+### 2.2 确认调价提交接口
+
+调价弹窗中本次填写 3 个 SKU 的“调整后申报价格(CNY)”：
+
+```text
+30.37
+30.37
+30.37
+```
+
+点击左下角按钮：
+
+```text
+确认调价
+```
+
+#### 2.2.1 商品批量调价提交
+
+**接口地址**
+
+```http
+POST https://agentseller.temu.com/api/kiana/mms/gmp/bg/magneto/api/price/priceAdjust/gmpProductBatchAdjustPrice
+```
+
+**请求头说明**
+
+| 参数 | 值 | 说明 |
+| --- | --- | --- |
+| `Content-Type` | `application/json` | 请求体为 JSON |
+| `Cookie` | `[登录态 Cookie]` | 使用当前浏览器登录态，文档中不保存完整 Cookie |
+| `Mallid` | `634418220627643` | 当前店铺/主体 ID，本次抓包上下文 |
+| `anti-content` / `anti-token` | `[REDACTED]` | 页面运行时生成，文档中不保存具体值 |
 
 **请求载荷**
 
 ```json
 {
-  "isCj": 1,
-  "cjButtonType": "batch_open_jit"
-}
-```
-
-点击按钮及弹窗操作过程中还会观察到仅包含 `isCj=1` 的二次校验：
-
-```json
-{
-  "isCj": 1
-}
-```
-
-**字段说明**
-
-
-| 字段           | 含义           | 说明                                          |
-| -------------- | -------------- | --------------------------------------------- |
-| `isCj`         | 插件侧操作标记 | 本次观察固定为`1`                             |
-| `cjButtonType` | 插件按钮类型   | “批量开通JIT”入口本次观察为`batch_open_jit` |
-
-#### 2.1.2 商品 SKC 数据获取
-
-**接口地址**
-
-```http
-POST https://agentseller.temu.com/visage-agent-seller/product/skc/pageQuery
-```
-
-**请求头**
-
-
-| 参数           | 值                 | 说明                                          |
-| -------------- | ------------------ | --------------------------------------------- |
-| `Content-Type` | `application/json` | 请求体为 JSON                                 |
-| `Mallid`       | `634418220627643`  | 当前店铺/主体 ID                              |
-| `Cookie`       | `[登录态 Cookie]`  | 使用当前浏览器登录态；文档中不保存完整 Cookie |
-| `anti-content` | `[REDACTED]`       | 页面运行时生成，不保存具体值                  |
-
-**请求载荷**
-
-首次探测请求：
-
-```json
-{
-  "page": 1,
-  "pageSize": 1,
-  "isJitForMms": false
-}
-```
-
-分页获取请求：
-
-```json
-{
-  "page": 1,
-  "pageSize": 200,
-  "isJitForMms": false
-}
-```
-
-本次页面实测按钮执行时展示获取进度：
-
-```text
-获取商品数据中 已完成：5000 / 总：5000
-```
-
-商品数据获取完成后打开插件弹窗：
-
-```text
-https://jiatongkuajing.com/chajian/3.7.7/index.html#/openJitGoods?token=[REDACTED]
-```
-
-弹窗中可见：
-
-- `一键开通所有JIT`
-- `一键开通已选JIT`
-
-**字段说明**
-
-
-| 字段          | 含义               | 说明                                    |
-| ------------- | ------------------ | --------------------------------------- |
-| `page`        | 商品 SKC 数据页码  | 从`1` 开始分页                          |
-| `pageSize`    | 每页数量           | 探测请求为`1`，正式分页本次观察为 `200` |
-| `isJitForMms` | JIT 相关筛选标记   | 本次观察为`false`                       |
-| `token`       | 插件弹窗上下文令牌 | URL 中出现，文档中脱敏                  |
-
-#### 2.1.3 最终批量开通接口
-
-在 `openJitGoods` 弹窗中点击：
-
-```text
-一键开通所有JIT
-```
-
-页面弹出最终确认：
-
-```text
-确定对全部商品开通JIT吗？
-```
-
-点击确认按钮：
-
-```text
-确定
-```
-
-确认后触发 Temu 官方批量开通接口。
-
-**接口地址**
-
-```http
-POST https://agentseller.temu.com/visage-agent-seller/product/skc/batchOpenJit
-```
-
-**请求头**
-
-
-| 参数           | 值                 | 说明                                          |
-| -------------- | ------------------ | --------------------------------------------- |
-| `Content-Type` | `application/json` | 请求体为 JSON                                 |
-| `Mallid`       | `634418220627643`  | 当前店铺/主体 ID                              |
-| `Cookie`       | `[登录态 Cookie]`  | 使用当前浏览器登录态；文档中不保存完整 Cookie |
-| `anti-content` | `[REDACTED]`       | 页面运行时生成，不保存具体值                  |
-
-**请求载荷**
-
-```json
-{
-  "productSkcSubSellModeReqList": [
+  "adjustReason": 3,
+  "adjustItems": [
     {
-      "productId": 1620340394,
-      "productSkcId": 32074852925
-    },
-    {
-      "productId": 7709599926,
-      "productSkcId": 68152885277
-    },
-    {
-      "productId": 6587936237,
-      "productSkcId": 23681936547
-    },
-    {
-      "productId": 1764908526,
-      "productSkcId": 13441768992
-    },
-    {
-      "productId": 7122136472,
-      "productSkcId": 14110563026
+      "productName": "JIT【已授权】【Holiday Gifts】1Pc Disney Jack Skellington 2D cartoon print,elegant couple style simple monochrome cartoon beret,classic PU leather retro art painter hat short edge French round hat detective",
+      "productSkcId": 90542150631,
+      "skuAdjustList": [
+        {
+          "targetPriceCurrency": "CNY",
+          "oldPriceCurrency": "CNY",
+          "oldSupplyPrice": 3038,
+          "skuId": 60788983974,
+          "targetSupplyPrice": 3037,
+          "syncPurchasePrice": 1
+        },
+        {
+          "targetPriceCurrency": "CNY",
+          "oldPriceCurrency": "CNY",
+          "oldSupplyPrice": 3038,
+          "skuId": 21582010624,
+          "targetSupplyPrice": 3037,
+          "syncPurchasePrice": 1
+        },
+        {
+          "targetPriceCurrency": "CNY",
+          "oldPriceCurrency": "CNY",
+          "oldSupplyPrice": 3038,
+          "skuId": 71415968988,
+          "targetSupplyPrice": 3037,
+          "syncPurchasePrice": 1
+        }
+      ],
+      "productId": 6903993073,
+      "supplierId": 634418220627643
     }
-  ]
+  ],
+  "operateSource": 30
 }
 ```
 
-实际请求中的 `productSkcSubSellModeReqList` 会继续包含待开通 JIT 的商品 SKC；上方仅保留本次拦截载荷中的前几条作为结构示例。
-
 **字段说明**
 
-
-| 字段                           | 含义                           | 说明                           |
-| ------------------------------ | ------------------------------ | ------------------------------ |
-| `productSkcSubSellModeReqList` | 待批量开通 JIT 的商品 SKC 列表 | 数组，每个元素对应一个商品 SKC |
-| `productId`                    | 商品 ID                        | 来自前置商品 SKC 数据          |
-| `productSkcId`                 | 商品 SKC ID                    | 来自前置商品 SKC 数据          |
+| 字段 | 含义 | 说明 |
+| --- | --- | --- |
+| `adjustReason` | 调价原因 | 本次为 `3`，页面显示“降价提升竞争力” |
+| `operateSource` | 操作来源 | 本次抓包为 `30` |
+| `adjustItems` | 调价商品列表 | 数组，每个元素对应一个商品/SKC |
+| `productId` | 商品 ID | 本次第一个商品为 `6903993073` |
+| `productSkcId` | 商品 SKC ID | 本次第一个商品为 `90542150631` |
+| `supplierId` | 供应商/店铺主体 ID | 本次为 `634418220627643` |
+| `skuAdjustList` | SKU 调价列表 | 每个 SKU 一条调价记录 |
+| `oldSupplyPrice` | 原申报价格 | 单位为分，`3038` 表示 `30.38 CNY` |
+| `targetSupplyPrice` | 调整后申报价格 | 单位为分，`3037` 表示 `30.37 CNY` |
+| `targetPriceCurrency` | 目标价格币种 | 本次为 `CNY` |
+| `oldPriceCurrency` | 原价格币种 | 本次为 `CNY` |
+| `syncPurchasePrice` | 是否同步采购价 | 本次为 `1` |
 
 **拦截结果**
 
 ```text
-POST https://agentseller.temu.com/visage-agent-seller/product/skc/batchOpenJit
-Result: blockedbyclient
+POST https://agentseller.temu.com/api/kiana/mms/gmp/bg/magneto/api/price/priceAdjust/gmpProductBatchAdjustPrice
+Result: aborted / Failed to fetch
+Observed report code: 444
 ```
 
-本次取证在最终确认后拦截并中止 `batchOpenJit` 请求，因此未实际改变商品 JIT 状态。
+本次取证在点击“确认调价”后拦截并中止 `gmpProductBatchAdjustPrice` 请求，因此未实际完成调价提交。页面随后产生 `Failed to fetch` 和 `code=444` 的前端监控上报，这是请求被中止后的监控结果，不是调价接口成功响应。
 
 **注意事项**
 
-- `batchOpenJit` 是真实状态变更接口，必须在点击最终确认前挂好拦截。
-- 插件弹窗 URL 中的 `token`、请求头中的 Cookie、Authorization、anti-content、anti-token 等敏感信息均不保存。
-- 自动化复现应优先在已登录浏览器页面上下文中执行，避免脱离 Temu 页面运行时签名、MallId 和插件上下文。
+- `gmpProductBatchAdjustPrice` 是真实状态变更接口，必须在点击“确认调价”前挂好拦截。
+- 价格字段以分为单位传输，页面填写 `30.37` 对应请求中的 `targetSupplyPrice: 3037`。
+- Cookie、Authorization、anti-content、anti-token、插件 token 等敏感信息均不写入文档。
+- 自动化复现应在已登录浏览器页面上下文中执行，避免脱离 Temu 页面运行时签名、MallId 和账号权限上下文。
 
 ## 3. 商品列表
 

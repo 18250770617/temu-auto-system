@@ -192,6 +192,29 @@
   line-height: 18px;
 }
 
+.temu-compliance-template__reason-list {
+  padding: 8px 10px;
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  border-radius: 4px;
+  background: #fff7ed;
+  color: #7c2d12;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.temu-compliance-template__reason-list:empty {
+  display: none;
+}
+
+.temu-compliance-template__reason-title {
+  font-weight: 700;
+}
+
+.temu-compliance-template__reason-list ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 .temu-compliance-template__link {
   border: 0;
   background: transparent;

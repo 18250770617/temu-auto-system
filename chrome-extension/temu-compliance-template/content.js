@@ -577,6 +577,9 @@
     status.className = `${STYLE_SCOPE}__muted`;
     status.textContent = 'Loading...';
 
+    const reasonList = document.createElement('div');
+    reasonList.className = `${STYLE_SCOPE}__reason-list`;
+
     const pre = document.createElement('pre');
     pre.className = `${STYLE_SCOPE}__json`;
 
@@ -595,14 +598,8 @@
     applyButton.textContent = TEXT.apply;
     applyButton.disabled = true;
 
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.className = `${STYLE_SCOPE}__secondary`;
-    back.textContent = TEXT.back;
-    back.addEventListener('click', () => openTemplateList(drawer, ownership, onClose));
-
-    actions.append(dryRunButton, applyButton, back);
-    body.append(status, pre, actions);
+    actions.append(dryRunButton, applyButton);
+    body.append(status, reasonList, pre, actions);
 
     let preparedChange = null;
     let applyRequest = null;
@@ -618,11 +615,13 @@
       });
       preparedChange = response.data;
       status.textContent = previewStatus(preparedChange);
+      renderPreviewReasons(reasonList, preparedChange);
       pre.textContent = JSON.stringify(preparedChange, null, 2);
       dryRunButton.disabled = Boolean(preparedChange.missing?.length);
     } catch (errorValue) {
       console.error(`${LOG_PREFIX} prepare change failed`, errorValue);
       status.textContent = `${TEXT.prepareChangeFailed}: ${errorValue.message || TEXT.apiOffline}`;
+      renderErrorReasons(reasonList, errorValue);
       status.classList.add(`${STYLE_SCOPE}__error`);
       return;
     }
@@ -649,6 +648,7 @@
       } catch (errorValue) {
         console.error(`${LOG_PREFIX} dry run failed`, errorValue);
         status.textContent = `${TEXT.dryRunFailed}: ${errorValue.message || TEXT.apiOffline}`;
+        renderErrorReasons(reasonList, errorValue);
         showToast(status.textContent, true);
       } finally {
         dryRunButton.disabled = false;
@@ -675,6 +675,7 @@
       } catch (errorValue) {
         console.error(`${LOG_PREFIX} apply failed`, errorValue);
         status.textContent = `${TEXT.applyFailed}: ${errorValue.message || TEXT.apiOffline}`;
+        renderErrorReasons(reasonList, errorValue);
         showToast(status.textContent, true);
       } finally {
         applyButton.disabled = false;
@@ -686,7 +687,63 @@
     const target = preparedChange?.target || {};
     const changed = (preparedChange?.diffSummary || []).filter((item) => item.changed).length;
     const missing = preparedChange?.missing?.length || 0;
-    return `SPU ${target.spu_id || '-'} / goods ${target.goods_id || '-'}，变更任务 ${changed} 项，缺失 ${missing} 项`;
+    return `SPU ${target.spu_id || '-'} / goods ${target.goods_id || '-'}，变更任务 ${changed} 项，阻断原因 ${missing} 项`;
+  }
+
+  function renderPreviewReasons(host, preparedChange) {
+    const missing = preparedChange?.missing || [];
+    const changed = (preparedChange?.diffSummary || []).filter((item) => item.changed);
+    if (missing.length) {
+      renderReasons(host, '当前不能演练，原因：', missing.map(reasonText));
+      return;
+    }
+    if (!changed.length) {
+      renderReasons(host, '可以演练：未发现会改变任务内容的差异。', []);
+      return;
+    }
+    renderReasons(host, '可以演练，将校验这些变更：', changed.map((item) =>
+      `任务 ${item.task_type}${item.task_id ? ` / task_id ${item.task_id}` : ''} 将使用${item.source === 'template' ? '模板内容' : '当前商品内容'}`,
+    ));
+  }
+
+  function renderErrorReasons(host, errorValue) {
+    const details = errorValue?.payload?.details || errorValue?.details || {};
+    const missing = Array.isArray(details.missing) ? details.missing : [];
+    if (missing.length) {
+      renderReasons(host, '当前不能继续，原因：', missing.map(reasonText));
+      return;
+    }
+    const message = errorValue?.message || errorValue?.payload?.error || TEXT.apiOffline;
+    renderReasons(host, '当前不能继续，原因：', [message]);
+  }
+
+  function renderReasons(host, title, reasons) {
+    host.textContent = '';
+    const titleNode = document.createElement('div');
+    titleNode.className = `${STYLE_SCOPE}__reason-title`;
+    titleNode.textContent = title;
+    host.appendChild(titleNode);
+    if (!reasons.length) return;
+    const list = document.createElement('ul');
+    reasons.forEach((reason) => {
+      const item = document.createElement('li');
+      item.textContent = reason;
+      list.appendChild(item);
+    });
+    host.appendChild(list);
+  }
+
+  function reasonText(reason) {
+    const map = {
+      goods_id: '缺少 goods_id：需要重新打开当前商品编辑抽屉并捕获 query_detail。',
+      spu_id: '缺少 spu_id：需要重新打开当前商品编辑抽屉并捕获 query_detail。',
+      cat_id: '缺少 cat_id：Temu 校验接口需要类目 ID，当前 query_detail 快照没有提供。',
+      template_edit_request_list: '缺少 template_edit_request_list：模板没有可应用的合规任务草稿。',
+      displayed_task_type_list: '缺少 displayed_task_type_list：当前商品没有捕获到待展示任务列表。',
+      'interfaceSnapshot.queryDetailCaptured': '模板缺少 query_detail 快照：请从编辑抽屉重新保存一次模板。',
+      'submissionDraft.template_edit_request_list': '模板缺少提交草稿：请从编辑抽屉重新保存一次模板。',
+    };
+    return map[reason] || String(reason);
   }
 
   function showToast(message, danger) {

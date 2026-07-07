@@ -3,9 +3,12 @@
   const BUTTON_ID = 'temu-compliance-template-button';
   const STYLE_SCOPE = 'temu-compliance-template';
   const LOG_PREFIX = '[TemuComplianceTemplate]';
-  const SCRIPT_VERSION = '0.2.0';
+  const SCRIPT_VERSION = '0.3.0';
   const UNKNOWN_COMPANY_ID = 'unknown-company';
   const UNKNOWN_SHOP_ID = 'unknown-shop';
+  const API_CAPTURE_SOURCE = 'TEMU_COMPLIANCE_TEMPLATE_API_CAPTURE';
+  const API_CAPTURE_REPLAY_EVENT = 'TEMU_COMPLIANCE_TEMPLATE_REPLAY_API_CAPTURES';
+  const complianceApiSnapshots = new Map();
 
   const TEXT = {
     editTitle: '\u7f16\u8f91\u5408\u89c4\u4fe1\u606f',
@@ -26,10 +29,31 @@
     emptyList: '\u6682\u65e0\u5df2\u4fdd\u5b58\u6a21\u677f',
     viewJson: '\u67e5\u770b JSON',
     delete: '\u5220\u9664',
+    dryRun: '\u6f14\u7ec3\u66f4\u6539',
+    apply: '\u771f\u5b9e\u4fdd\u5b58',
+    changePreviewTitle: '\u6a21\u677f\u66f4\u6539\u9884\u89c8',
+    prepareChangeFailed: '\u751f\u6210\u66f4\u6539\u9884\u89c8\u5931\u8d25',
+    dryRunFailed: '\u6f14\u7ec3\u5931\u8d25',
+    dryRunDone: '\u6f14\u7ec3\u5b8c\u6210',
+    applyConfirm: '\u5c06\u771f\u5b9e\u4fdd\u5b58\u5f53\u524d\u5546\u54c1\u7684\u5408\u89c4\u4fe1\u606f\uff0c\u8bf7\u786e\u8ba4\u5df2\u6838\u5bf9\u5dee\u5f02\u3002',
+    applyFailed: '\u771f\u5b9e\u4fdd\u5b58\u5931\u8d25',
+    applyDone: '\u771f\u5b9e\u4fdd\u5b58\u5df2\u5b8c\u6210',
+    notApplicableTemplate: '\u8be5\u6a21\u677f\u7f3a\u5c11 query_detail \u5feb\u7167\uff0c\u8bf7\u91cd\u65b0\u4ece\u7f16\u8f91\u62bd\u5c49\u4fdd\u5b58\u4e00\u6b21',
+    noQueryDetailSnapshot: '\u672a\u6355\u83b7\u5230\u5f53\u524d\u5546\u54c1 query_detail\uff0c\u8bf7\u91cd\u65b0\u6253\u5f00\u7f16\u8f91\u62bd\u5c49',
     close: '\u5173\u95ed',
     back: '\u8fd4\u56de',
+    searchPlaceholder: '\u641c\u7d22\u6a21\u677f\u540d\u3001SPU\u3001\u5546\u54c1\u6807\u9898',
+    search: '\u641c\u7d22',
+    clear: '\u6e05\u7a7a',
+    previousPage: '\u4e0a\u4e00\u9875',
+    nextPage: '\u4e0b\u4e00\u9875',
+    pageSummary: '\u7b2c {page}/{totalPages} \u9875\uff0c\u5171 {total} \u6761',
     deleted: '\u6a21\u677f\u5df2\u5220\u9664',
     apiOffline: '\u672c\u5730 API \u672a\u8fde\u63a5\uff0c\u8bf7\u5148\u542f\u52a8 npm run dev:api',
+    noSpu: '\u672a\u627e\u5230\u5f53\u524d\u6a21\u677f\u7684 SPU',
+    gettingSku: '\u83b7\u53d6\u4e2d...',
+    skuNotFound: '\u672a\u627e\u5230\u5bf9\u5e94\u8d27\u53f7',
+    getSkuFailed: '\u83b7\u53d6\u8d27\u53f7\u5931\u8d25',
   };
 
   const COMPLIANCE_TITLES = [
@@ -55,6 +79,57 @@
 
   function getText(element) {
     return normalizeText(element?.innerText || element?.textContent || '');
+  }
+
+  function handleApiCapture(event) {
+    if (event.source !== window || event.origin !== window.location.origin) return;
+    const snapshot = event.data;
+    if (!snapshot || snapshot.source !== API_CAPTURE_SOURCE || !snapshot.endpoint) return;
+
+    const normalized = normalizeApiSnapshot(snapshot);
+    const spuId = apiSnapshotSpuId(normalized);
+    const keys = [
+      `${normalized.endpoint}:latest`,
+      spuId ? `${normalized.endpoint}:${spuId}` : '',
+    ].filter(Boolean);
+
+    keys.forEach((key) => complianceApiSnapshots.set(key, normalized));
+    window.__TEMU_COMPLIANCE_TEMPLATE_API_SNAPSHOTS__ = Array.from(complianceApiSnapshots.entries())
+      .map(([key, value]) => ({ key, endpoint: value.endpoint, spuId: apiSnapshotSpuId(value), capturedAt: value.capturedAt }));
+  }
+
+  function normalizeApiSnapshot(snapshot) {
+    return {
+      endpoint: String(snapshot.endpoint || ''),
+      url: String(snapshot.url || ''),
+      status: snapshot.status || 0,
+      capturedAt: snapshot.capturedAt || new Date().toISOString(),
+      requestBody: snapshot.requestBody && typeof snapshot.requestBody === 'object' ? snapshot.requestBody : null,
+      responseBody: snapshot.responseBody && typeof snapshot.responseBody === 'object' ? snapshot.responseBody : null,
+    };
+  }
+
+  function apiSnapshotSpuId(snapshot) {
+    return normalizeText(
+      snapshot?.requestBody?.spu_id ||
+      snapshot?.requestBody?.spuId ||
+      snapshot?.responseBody?.result?.spu_id ||
+      snapshot?.responseBody?.result?.spuId ||
+      '',
+    );
+  }
+
+  function latestApiSnapshot(endpoint, spuId) {
+    const normalizedSpuId = normalizeText(spuId);
+    return (
+      (normalizedSpuId && complianceApiSnapshots.get(`${endpoint}:${normalizedSpuId}`)) ||
+      complianceApiSnapshots.get(`${endpoint}:latest`) ||
+      null
+    );
+  }
+
+  function consumeExistingApiCaptures() {
+    window.dispatchEvent(new Event(API_CAPTURE_REPLAY_EVENT));
   }
 
   function toFieldKey(label, fallback) {
@@ -248,7 +323,7 @@
     getSku.type = 'button';
     getSku.className = `${STYLE_SCOPE}__secondary`;
     getSku.textContent = TEXT.getSku;
-    getSku.disabled = true;
+    getSku.disabled = !collected.product.spuId;
 
     actions.append(confirm, cancel, getSku);
     body.append(row, error, listButton, actions);
@@ -301,6 +376,33 @@
     }
 
     confirm.addEventListener('click', () => submit(false));
+    getSku.addEventListener('click', async () => {
+      const spuId = collected.product.spuId;
+      if (!spuId) {
+        setError(TEXT.noSpu);
+        return;
+      }
+
+      const originalText = getSku.textContent;
+      getSku.disabled = true;
+      getSku.textContent = TEXT.gettingSku;
+      setError('');
+
+      try {
+        const result = await lookupExtCodeBySpu(spuId);
+        const extCode = normalizeText(result?.extCode);
+        if (!extCode) throw new Error(TEXT.skuNotFound);
+        input.value = extCode;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      } catch (errorValue) {
+        console.error(`${LOG_PREFIX} get sku failed`, errorValue);
+        setError(`${TEXT.getSkuFailed}: ${errorValue.message || TEXT.skuNotFound}`);
+      } finally {
+        getSku.disabled = false;
+        getSku.textContent = originalText;
+      }
+    });
     replaceButton.addEventListener('click', () => {
       if (duplicateName) submit(true);
     });
@@ -308,25 +410,91 @@
     input.focus();
   }
 
-  async function openTemplateList(drawer, ownership, onClose) {
+  async function openTemplateList(drawer, ownership, onClose, state) {
+    const listState = {
+      page: Math.max(1, state?.page || 1),
+      pageSize: state?.pageSize || 10,
+      search: normalizeText(state?.search || ''),
+    };
     const overlay = createOverlay(drawer);
     const { body } = createModal(overlay, TEXT.listTitle, onClose || closeModal);
     body.textContent = '';
 
+    const searchRow = document.createElement('div');
+    searchRow.className = `${STYLE_SCOPE}__list-search`;
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = `${STYLE_SCOPE}__input`;
+    searchInput.placeholder = TEXT.searchPlaceholder;
+    searchInput.value = listState.search;
+
+    const searchButton = document.createElement('button');
+    searchButton.type = 'button';
+    searchButton.className = `${STYLE_SCOPE}__primary`;
+    searchButton.textContent = TEXT.search;
+
+    const clearSearchButton = document.createElement('button');
+    clearSearchButton.type = 'button';
+    clearSearchButton.className = `${STYLE_SCOPE}__secondary`;
+    clearSearchButton.textContent = TEXT.clear;
+
+    searchRow.append(searchInput, searchButton, clearSearchButton);
+    body.appendChild(searchRow);
+
+    const listHost = document.createElement('div');
+    listHost.className = `${STYLE_SCOPE}__template-list`;
+    body.appendChild(listHost);
+
+    const pager = document.createElement('div');
+    pager.className = `${STYLE_SCOPE}__pager`;
+
+    const previousPage = document.createElement('button');
+    previousPage.type = 'button';
+    previousPage.className = `${STYLE_SCOPE}__secondary`;
+    previousPage.textContent = TEXT.previousPage;
+
+    const pageInfo = document.createElement('div');
+    pageInfo.className = `${STYLE_SCOPE}__muted ${STYLE_SCOPE}__page-info`;
+
+    const nextPage = document.createElement('button');
+    nextPage.type = 'button';
+    nextPage.className = `${STYLE_SCOPE}__secondary`;
+    nextPage.textContent = TEXT.nextPage;
+
+    pager.append(previousPage, pageInfo, nextPage);
+    body.appendChild(pager);
+
     const status = document.createElement('div');
     status.className = `${STYLE_SCOPE}__muted`;
     status.textContent = 'Loading...';
-    body.appendChild(status);
+    listHost.appendChild(status);
+
+    function refresh(nextState) {
+      openTemplateList(drawer, ownership, onClose, { ...listState, ...nextState });
+    }
+
+    searchButton.addEventListener('click', () => refresh({ page: 1, search: searchInput.value }));
+    clearSearchButton.addEventListener('click', () => refresh({ page: 1, search: '' }));
+    searchInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') refresh({ page: 1, search: searchInput.value });
+    });
 
     try {
-      const response = await listTemplates(ownership);
+      const response = await listTemplates(ownership, listState);
       const rows = response.data || [];
-      body.textContent = '';
+      const pagination = response.pagination || {
+        page: listState.page,
+        pageSize: listState.pageSize,
+        total: rows.length,
+        totalPages: Math.max(1, Math.ceil(rows.length / listState.pageSize)),
+      };
+      listHost.textContent = '';
       if (!rows.length) {
         const empty = document.createElement('div');
         empty.className = `${STYLE_SCOPE}__muted`;
         empty.textContent = TEXT.emptyList;
-        body.appendChild(empty);
+        listHost.appendChild(empty);
       }
 
       rows.forEach((item) => {
@@ -340,7 +508,15 @@
         view.type = 'button';
         view.className = `${STYLE_SCOPE}__link`;
         view.textContent = TEXT.viewJson;
-        view.addEventListener('click', () => openJsonView(drawer, item, ownership, () => openTemplateList(drawer, ownership, onClose)));
+        view.addEventListener('click', () => openJsonView(drawer, item, ownership, () => openTemplateList(drawer, ownership, onClose, listState)));
+
+        const dryRun = document.createElement('button');
+        dryRun.type = 'button';
+        dryRun.className = `${STYLE_SCOPE}__link`;
+        dryRun.textContent = TEXT.dryRun;
+        dryRun.disabled = !item.usability?.applicable && !item.templateInfoJson?.interfaceSnapshot?.queryDetailCaptured;
+        dryRun.title = dryRun.disabled ? TEXT.notApplicableTemplate : TEXT.dryRun;
+        dryRun.addEventListener('click', () => openChangePreview(drawer, item, ownership, () => openTemplateList(drawer, ownership, onClose, listState)));
 
         const del = document.createElement('button');
         del.type = 'button';
@@ -350,16 +526,25 @@
           try {
             await deleteTemplate(item.id);
             showToast(TEXT.deleted);
-            openTemplateList(drawer, ownership, onClose);
+            refresh({ page: listState.page });
           } catch (errorValue) {
             console.error(`${LOG_PREFIX} delete failed`, errorValue);
             showToast(errorValue.message || TEXT.saveFailed, true);
           }
         });
 
-        row.append(name, view, del);
-        body.appendChild(row);
+        row.append(name, view, dryRun, del);
+        listHost.appendChild(row);
       });
+
+      pageInfo.textContent = TEXT.pageSummary
+        .replace('{page}', String(pagination.page))
+        .replace('{totalPages}', String(pagination.totalPages))
+        .replace('{total}', String(pagination.total));
+      previousPage.disabled = pagination.page <= 1;
+      nextPage.disabled = pagination.page >= pagination.totalPages;
+      previousPage.addEventListener('click', () => refresh({ page: pagination.page - 1 }));
+      nextPage.addEventListener('click', () => refresh({ page: pagination.page + 1 }));
     } catch (errorValue) {
       console.error(`${LOG_PREFIX} list failed`, errorValue);
       status.textContent = errorValue.message || TEXT.apiOffline;
@@ -382,6 +567,126 @@
     back.addEventListener('click', () => openTemplateList(drawer, ownership, onClose));
 
     body.append(pre, back);
+  }
+
+  async function openChangePreview(drawer, item, ownership, onClose) {
+    const overlay = createOverlay(drawer);
+    const { body } = createModal(overlay, TEXT.changePreviewTitle, onClose || closeModal);
+
+    const status = document.createElement('div');
+    status.className = `${STYLE_SCOPE}__muted`;
+    status.textContent = 'Loading...';
+
+    const pre = document.createElement('pre');
+    pre.className = `${STYLE_SCOPE}__json`;
+
+    const actions = document.createElement('div');
+    actions.className = `${STYLE_SCOPE}__actions`;
+
+    const dryRunButton = document.createElement('button');
+    dryRunButton.type = 'button';
+    dryRunButton.className = `${STYLE_SCOPE}__primary`;
+    dryRunButton.textContent = TEXT.dryRun;
+    dryRunButton.disabled = true;
+
+    const applyButton = document.createElement('button');
+    applyButton.type = 'button';
+    applyButton.className = `${STYLE_SCOPE}__secondary`;
+    applyButton.textContent = TEXT.apply;
+    applyButton.disabled = true;
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = `${STYLE_SCOPE}__secondary`;
+    back.textContent = TEXT.back;
+    back.addEventListener('click', () => openTemplateList(drawer, ownership, onClose));
+
+    actions.append(dryRunButton, applyButton, back);
+    body.append(status, pre, actions);
+
+    let preparedChange = null;
+    let applyRequest = null;
+
+    try {
+      const current = collectPayload();
+      const targetQueryDetailSnapshot = latestApiSnapshot('queryDetail', current.product.spuId);
+      if (!targetQueryDetailSnapshot) throw new Error(TEXT.noQueryDetailSnapshot);
+
+      const response = await prepareTemplateChange({
+        templateId: item.id,
+        targetQueryDetailSnapshot,
+      });
+      preparedChange = response.data;
+      status.textContent = previewStatus(preparedChange);
+      pre.textContent = JSON.stringify(preparedChange, null, 2);
+      dryRunButton.disabled = Boolean(preparedChange.missing?.length);
+    } catch (errorValue) {
+      console.error(`${LOG_PREFIX} prepare change failed`, errorValue);
+      status.textContent = `${TEXT.prepareChangeFailed}: ${errorValue.message || TEXT.apiOffline}`;
+      status.classList.add(`${STYLE_SCOPE}__error`);
+      return;
+    }
+
+    dryRunButton.addEventListener('click', async () => {
+      dryRunButton.disabled = true;
+      status.textContent = `${TEXT.dryRun}...`;
+      try {
+        const current = collectPayload();
+        const targetQueryDetailSnapshot = latestApiSnapshot('queryDetail', current.product.spuId);
+        const response = await dryRunTemplateChange({
+          templateId: item.id,
+          targetQueryDetailSnapshot,
+          preparedChange,
+          companyId: current.companyId,
+          siteKey: current.siteKey,
+          sourceOrigin: location.origin,
+        });
+        applyRequest = response.data?.applyRequest;
+        pre.textContent = JSON.stringify(response.data, null, 2);
+        status.textContent = TEXT.dryRunDone;
+        applyButton.disabled = !applyRequest;
+        showToast(TEXT.dryRunDone);
+      } catch (errorValue) {
+        console.error(`${LOG_PREFIX} dry run failed`, errorValue);
+        status.textContent = `${TEXT.dryRunFailed}: ${errorValue.message || TEXT.apiOffline}`;
+        showToast(status.textContent, true);
+      } finally {
+        dryRunButton.disabled = false;
+      }
+    });
+
+    applyButton.addEventListener('click', async () => {
+      if (!applyRequest || !window.confirm(TEXT.applyConfirm)) return;
+      applyButton.disabled = true;
+      status.textContent = `${TEXT.apply}...`;
+      try {
+        const current = collectPayload();
+        const response = await applyTemplateChange({
+          templateId: item.id,
+          applyRequest,
+          confirmApply: true,
+          companyId: current.companyId,
+          siteKey: current.siteKey,
+          sourceOrigin: location.origin,
+        });
+        pre.textContent = JSON.stringify(response.data, null, 2);
+        status.textContent = TEXT.applyDone;
+        showToast(TEXT.applyDone);
+      } catch (errorValue) {
+        console.error(`${LOG_PREFIX} apply failed`, errorValue);
+        status.textContent = `${TEXT.applyFailed}: ${errorValue.message || TEXT.apiOffline}`;
+        showToast(status.textContent, true);
+      } finally {
+        applyButton.disabled = false;
+      }
+    });
+  }
+
+  function previewStatus(preparedChange) {
+    const target = preparedChange?.target || {};
+    const changed = (preparedChange?.diffSummary || []).filter((item) => item.changed).length;
+    const missing = preparedChange?.missing?.length || 0;
+    return `SPU ${target.spu_id || '-'} / goods ${target.goods_id || '-'}，变更任务 ${changed} 项，缺失 ${missing} 项`;
   }
 
   function showToast(message, danger) {
@@ -544,6 +849,8 @@
     const sections = findSections(drawer).map((section, sectionIndex) =>
       collectSection(section, sectionIndex),
     );
+    const queryDetailSnapshot = latestApiSnapshot('queryDetail', product.spuId);
+    const interfaceSnapshot = buildInterfaceSnapshot(queryDetailSnapshot);
 
     return {
       kind: 'complianceInfoTemplate',
@@ -553,7 +860,138 @@
       product,
       ownership,
       sections,
+      interfaceSnapshot,
+      submissionDraft: buildSubmissionDraft(interfaceSnapshot),
+      usability: buildTemplateUsability(interfaceSnapshot),
     };
+  }
+
+  function buildInterfaceSnapshot(queryDetailSnapshot) {
+    if (!queryDetailSnapshot) {
+      return {
+        queryDetailCaptured: false,
+      };
+    }
+
+    const request = queryDetailSnapshot.requestBody || {};
+    const result = queryDetailSnapshot.responseBody?.result || {};
+    return {
+      queryDetailCaptured: true,
+      capturedAt: queryDetailSnapshot.capturedAt,
+      status: queryDetailSnapshot.status,
+      request: {
+        goods_id: request.goods_id ?? null,
+        spu_id: request.spu_id ?? null,
+        wait_task_list: cloneJson(request.wait_task_list || []),
+      },
+      result: {
+        goods_id: result.goods_id ?? request.goods_id ?? null,
+        spu_id: result.spu_id ?? request.spu_id ?? null,
+        cat_id: result.cat_id ?? result.leaf_cat_id ?? null,
+        group_sku_by_same_info: result.group_sku_by_same_info ?? null,
+        sku_info_list: cloneJson(result.sku_info_list || []),
+        template_list: cloneJson(result.template_list || []),
+      },
+    };
+  }
+
+  function buildSubmissionDraft(interfaceSnapshot) {
+    if (!interfaceSnapshot?.queryDetailCaptured) return null;
+
+    const waitTaskList = interfaceSnapshot.request?.wait_task_list || [];
+    const templateList = interfaceSnapshot.result?.template_list || [];
+    const waitTaskByType = new Map(waitTaskList.map((task) => [String(task.task_type), task]));
+    const templateEditRequestList = templateList.map((template) =>
+      buildTemplateEditRequest(template, waitTaskByType.get(String(template.task_type))),
+    ).filter(Boolean);
+
+    return {
+      source: 'query_detail',
+      readyForDirectSubmit: false,
+      goods_id: interfaceSnapshot.result.goods_id,
+      spu_id: interfaceSnapshot.result.spu_id,
+      cat_id: interfaceSnapshot.result.cat_id,
+      group_sku_by_same_info: interfaceSnapshot.result.group_sku_by_same_info,
+      displayed_task_type_list: waitTaskList.map((task) => task.task_type).filter((taskType) => taskType !== undefined && taskType !== null),
+      simple_template_list: templateList
+        .filter((template) => template.template_id)
+        .map((template) => ({
+          template_id: template.template_id,
+          task_type: template.task_type,
+          task_status: template.task_status,
+        })),
+      template_edit_request_list: templateEditRequestList,
+    };
+  }
+
+  function buildTemplateEditRequest(template, waitTask) {
+    if (!template || typeof template !== 'object') return null;
+
+    const request = {};
+    copyDefined(request, 'task_id', waitTask?.task_id ?? template.task_id);
+    copyDefined(request, 'task_type', template.task_type ?? waitTask?.task_type);
+    copyDefined(request, 'task_name', waitTask?.task_name ?? template.task_name);
+    copyDefined(request, 'is_not_required', waitTask?.is_not_required ?? template.is_not_required);
+    copyDefined(request, 'status', waitTask?.status ?? template.status);
+    copyDefined(request, 'task_status', template.task_status ?? waitTask?.task_status);
+    copyDefined(request, 'template_id', template.template_id);
+
+    if (template.properties) request.properties = cloneJson(template.properties);
+    if (template.images) request.images = cloneJson(template.images);
+    else if (template.template_id) request.images = {};
+    if (template.input_text) request.input_text = cloneJson(template.input_text);
+    else if (template.template_id) request.input_text = {};
+    if (template.suppl_prop_info_list) request.suppl_prop_info_list = cloneJson(template.suppl_prop_info_list);
+
+    const selectedReps = selectedRepDetailList(template.rep_detail_list);
+    if (selectedReps.length) request.rep_detail_list = selectedReps;
+    if (template.reject_reason_list) request.reject_reason_list = cloneJson(template.reject_reason_list);
+
+    return request;
+  }
+
+  function selectedRepDetailList(repDetailList) {
+    if (!Array.isArray(repDetailList)) return [];
+    const selected = repDetailList.filter((rep) => rep?.default_select);
+    return selected.map((rep) => {
+      const result = {};
+      copyDefined(result, 'rep_type', rep.rep_type);
+      copyDefined(result, 'rep_id', rep.rep_id);
+      copyDefined(result, 'rep_name', rep.rep_name);
+      return result;
+    });
+  }
+
+  function buildTemplateUsability(interfaceSnapshot) {
+    if (!interfaceSnapshot?.queryDetailCaptured) {
+      return {
+        canBuildSubmitDraft: false,
+        directSubmitReady: false,
+        missing: ['query_detail snapshot'],
+      };
+    }
+
+    const missing = [];
+    if (!interfaceSnapshot.result?.goods_id) missing.push('goods_id');
+    if (!interfaceSnapshot.result?.spu_id) missing.push('spu_id');
+    if (!interfaceSnapshot.result?.template_list?.length) missing.push('template_list');
+    if (!interfaceSnapshot.request?.wait_task_list?.length) missing.push('wait_task_list');
+    if (!interfaceSnapshot.result?.cat_id) missing.push('cat_id');
+
+    return {
+      canBuildSubmitDraft: missing.length === 0 || !missing.includes('template_list'),
+      directSubmitReady: false,
+      missing,
+      note: 'submissionDraft is a query_detail-derived draft; run query_dynamic_template and check_edit_compliance before edit_compliance.',
+    };
+  }
+
+  function copyDefined(target, key, value) {
+    if (value !== undefined && value !== null) target[key] = value;
+  }
+
+  function cloneJson(value) {
+    return JSON.parse(JSON.stringify(value ?? null));
   }
 
   function findSections(drawer) {
@@ -718,12 +1156,14 @@
     });
   }
 
-  function listTemplates(ownership) {
+  function listTemplates(ownership, options) {
     const params = new URLSearchParams({
       companyId: ownership.companyId,
-      shopId: ownership.shopId,
       siteKey: ownership.siteKey,
+      page: String(options?.page || 1),
+      pageSize: String(options?.pageSize || 10),
     });
+    if (options?.search) params.set('search', normalizeText(options.search));
     return requestJson(`/api/compliance-info-templates?${params.toString()}`, { method: 'GET' });
   }
 
@@ -731,6 +1171,46 @@
     return requestJson(`/api/compliance-info-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
   }
 
+  function prepareTemplateChange(payload) {
+    return requestJson('/api/compliance-info-templates/prepare-change', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  function dryRunTemplateChange(payload) {
+    return requestJson('/api/compliance-info-templates/dry-run-change', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  function applyTemplateChange(payload) {
+    return requestJson('/api/compliance-info-templates/apply-change', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  function lookupExtCodeBySpu(spuId) {
+    return requestJson('/api/temu/product-ext-code', {
+      method: 'POST',
+      body: JSON.stringify({
+        spuId,
+        companyId: collectedCompanyId(),
+        siteKey: location.hostname || 'agentseller.temu.com',
+        sourceOrigin: location.origin,
+      }),
+    }).then((response) => response.data);
+  }
+
+  function collectedCompanyId() {
+    const ownership = scanStorageForOwnership();
+    return firstValidId(ownership.companyId, ownership.company_id, ownership.teamId, ownership.team_id) || '';
+  }
+
+  window.addEventListener('message', handleApiCapture);
+  consumeExistingApiCaptures();
   ensureButton();
   const observer = new MutationObserver(ensureButton);
   observer.observe(document.documentElement, { childList: true, subtree: true });

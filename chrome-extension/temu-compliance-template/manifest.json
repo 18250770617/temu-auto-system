@@ -1,9 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "Temu Compliance Template Collector",
-  "version": "0.1.0",
-  "description": "Collects compliance edit-page fields from Temu Agent Seller and prints a template JSON to the console.",
+  "name": "Temu 合规中心模板",
+  "version": "0.4.0",
+  "description": "保存 Temu 合规信息模板，并支持对当前商品进行模板演练和人工确认保存。",
   "content_scripts": [
+    {
+      "matches": [
+        "https://agentseller.temu.com/govern/information-supplementation*",
+        "https://agentseller.temu.com/*"
+      ],
+      "js": ["page-hook.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
     {
       "matches": [
         "https://agentseller.temu.com/govern/information-supplementation*",

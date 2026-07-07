@@ -1,0 +1,342 @@
+.temu-compliance-template__footer-host {
+  position: relative;
+  padding-right: 116px !important;
+}
+
+.temu-compliance-template__button-slot {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  transform: translateY(-50%);
+}
+
+.temu-compliance-template__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  height: 34px;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid #28b8ff;
+  border-radius: 4px;
+  background: linear-gradient(180deg, #111827 0%, #020617 100%);
+  color: #ffffff;
+  cursor: pointer;
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 1px rgba(40, 184, 255, 0.2), 0 8px 18px rgba(2, 8, 23, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.temu-compliance-template__button::before,
+.temu-compliance-template__primary::before,
+.temu-compliance-template__secondary::before {
+  position: absolute;
+  top: -45%;
+  left: -80%;
+  width: 54%;
+  height: 190%;
+  background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.18) 38%, rgba(40, 184, 255, 0.58) 50%, rgba(255, 255, 255, 0.32) 62%, transparent 100%);
+  content: "";
+  pointer-events: none;
+  transform: rotate(12deg);
+}
+
+@keyframes temu-compliance-template-shine {
+  from {
+    left: -80%;
+  }
+
+  to {
+    left: 128%;
+  }
+}
+
+.temu-compliance-template__button:hover {
+  border-color: #5fd3ff;
+  background: linear-gradient(180deg, #182235 0%, #020617 100%);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(95, 211, 255, 0.3), 0 0 20px rgba(40, 184, 255, 0.34), 0 10px 22px rgba(2, 8, 23, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.temu-compliance-template__button:hover::before,
+.temu-compliance-template__primary:hover::before,
+.temu-compliance-template__secondary:hover::before {
+  animation: temu-compliance-template-shine 520ms ease forwards;
+}
+
+.temu-compliance-template__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2147483647;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(3, 10, 18, 0.44);
+  backdrop-filter: blur(2px);
+}
+
+.temu-compliance-template__modal {
+  width: min(520px, calc(100% - 24px));
+  max-height: min(680px, calc(100% - 24px));
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(40, 184, 255, 0.72);
+  background: #ffffff;
+  box-shadow: 0 0 0 1px rgba(40, 184, 255, 0.18), 0 22px 54px rgba(15, 23, 42, 0.22);
+  color: #07111c;
+  font-family: Arial, "Microsoft YaHei", sans-serif;
+}
+
+.temu-compliance-template__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(40, 184, 255, 0.28);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  color: #07111c;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-shadow: none;
+}
+
+.temu-compliance-template__modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 620px;
+  overflow: auto;
+  padding: 16px;
+}
+
+.temu-compliance-template__input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.temu-compliance-template__input-wrap {
+  position: relative;
+  min-width: 0;
+}
+
+.temu-compliance-template__input {
+  width: 100%;
+  height: 36px;
+  box-sizing: border-box;
+  padding: 0 34px 0 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #07111c;
+  font-size: 14px;
+  outline: none;
+}
+
+.temu-compliance-template__input:focus {
+  border-color: #28b8ff;
+  box-shadow: 0 0 0 2px rgba(40, 184, 255, 0.18), 0 0 14px rgba(40, 184, 255, 0.14);
+}
+
+.temu-compliance-template__clear,
+.temu-compliance-template__icon-button {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.temu-compliance-template__clear {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+.temu-compliance-template__icon-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+}
+
+.temu-compliance-template__icon-button:hover,
+.temu-compliance-template__clear:hover {
+  background: #f3f4f6;
+  color: #07111c;
+}
+
+.temu-compliance-template__error {
+  min-height: 18px;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.temu-compliance-template__link {
+  border: 0;
+  background: transparent;
+  color: #4cc9ff;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  text-align: left;
+}
+
+.temu-compliance-template__link:hover {
+  color: #a7e8ff;
+  text-decoration: underline;
+}
+
+.temu-compliance-template__replace[hidden] {
+  display: none;
+}
+
+.temu-compliance-template__danger-link {
+  color: #b91c1c;
+}
+
+.temu-compliance-template__danger-link:hover {
+  color: #7f1d1d;
+}
+
+.temu-compliance-template__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.temu-compliance-template__primary,
+.temu-compliance-template__secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 32px;
+  overflow: hidden;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.temu-compliance-template__primary {
+  border: 1px solid #28b8ff;
+  background: linear-gradient(180deg, #111827 0%, #020617 100%);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(40, 184, 255, 0.18), 0 8px 18px rgba(2, 8, 23, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.temu-compliance-template__secondary {
+  border: 1px solid rgba(40, 184, 255, 0.62);
+  background: #fff;
+  color: #07111c;
+}
+
+.temu-compliance-template__primary:hover {
+  border-color: #5fd3ff;
+  background: linear-gradient(180deg, #182235 0%, #020617 100%);
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(95, 211, 255, 0.28), 0 0 18px rgba(40, 184, 255, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.temu-compliance-template__secondary:hover {
+  border-color: #5fd3ff;
+  background: #ffffff;
+  box-shadow: 0 0 14px rgba(40, 184, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.temu-compliance-template__primary:disabled,
+.temu-compliance-template__secondary:disabled,
+.temu-compliance-template__link:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.temu-compliance-template__template-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 38px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(40, 184, 255, 0.18);
+}
+
+.temu-compliance-template__template-row:hover {
+  background: #f4fbff;
+}
+
+.temu-compliance-template__template-name {
+  overflow: hidden;
+  color: #07111c;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.temu-compliance-template__muted {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.temu-compliance-template__json {
+  max-height: 420px;
+  overflow: auto;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid rgba(40, 184, 255, 0.38);
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #07111c;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.temu-compliance-template__toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2147483647;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  border: 1px solid rgba(40, 184, 255, 0.72);
+  background: #07111c;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(40, 184, 255, 0.18), 0 10px 26px rgba(0, 0, 0, 0.24), 0 0 18px rgba(40, 184, 255, 0.22);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.temu-compliance-template__toast--danger {
+  background: #b91c1c;
+}

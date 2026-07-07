@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Temu Compliance Template Collector",
+  "version": "0.1.0",
+  "description": "Collects compliance edit-page fields from Temu Agent Seller and prints a template JSON to the console.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://agentseller.temu.com/govern/information-supplementation*",
+        "https://agentseller.temu.com/*"
+      ],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": [],
+  "host_permissions": [
+    "http://127.0.0.1:*/*"
+  ]
+}

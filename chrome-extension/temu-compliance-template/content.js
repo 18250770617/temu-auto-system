@@ -908,18 +908,19 @@
     );
     const queryDetailSnapshot = latestApiSnapshot('queryDetail', product.spuId);
     const interfaceSnapshot = buildInterfaceSnapshot(queryDetailSnapshot);
+    const submissionDraft = buildSubmissionDraft(interfaceSnapshot, sections);
 
     return {
       kind: 'complianceInfoTemplate',
-      version: 1,
+      version: 2,
       sourceUrl: location.href,
       collectedAt: new Date().toISOString(),
       product,
       ownership,
       sections,
       interfaceSnapshot,
-      submissionDraft: buildSubmissionDraft(interfaceSnapshot),
-      usability: buildTemplateUsability(interfaceSnapshot),
+      submissionDraft,
+      usability: buildTemplateUsability(interfaceSnapshot, submissionDraft),
     };
   }
 
@@ -952,7 +953,7 @@
     };
   }
 
-  function buildSubmissionDraft(interfaceSnapshot) {
+  function buildSubmissionDraft(interfaceSnapshot, sections) {
     if (!interfaceSnapshot?.queryDetailCaptured) return null;
 
     const waitTaskList = interfaceSnapshot.request?.wait_task_list || [];
@@ -962,9 +963,11 @@
       buildTemplateEditRequest(template, waitTaskByType.get(String(template.task_type))),
     ).filter(Boolean);
 
-    return {
-      source: 'query_detail',
+    const draft = {
+      source: 'query_detail+dom_current_values',
       readyForDirectSubmit: false,
+      missing: [],
+      domOverrides: [],
       goods_id: interfaceSnapshot.result.goods_id,
       spu_id: interfaceSnapshot.result.spu_id,
       cat_id: interfaceSnapshot.result.cat_id,
@@ -979,6 +982,9 @@
         })),
       template_edit_request_list: templateEditRequestList,
     };
+    applyDomCurrentValuesToDraft(draft, sections || [], templateList);
+    draft.readyForDirectSubmit = draft.missing.length === 0 && templateEditRequestList.length > 0;
+    return draft;
   }
 
   function buildTemplateEditRequest(template, waitTask) {
@@ -1019,7 +1025,7 @@
     });
   }
 
-  function buildTemplateUsability(interfaceSnapshot) {
+  function buildTemplateUsability(interfaceSnapshot, submissionDraft) {
     if (!interfaceSnapshot?.queryDetailCaptured) {
       return {
         canBuildSubmitDraft: false,
@@ -1037,10 +1043,180 @@
 
     return {
       canBuildSubmitDraft: missing.length === 0 || !missing.includes('template_list'),
-      directSubmitReady: false,
-      missing,
-      note: 'submissionDraft is a query_detail-derived draft; run query_dynamic_template and check_edit_compliance before edit_compliance.',
+      directSubmitReady: Boolean(submissionDraft?.readyForDirectSubmit),
+      missing: [...missing, ...(submissionDraft?.missing || [])],
+      note: 'submissionDraft is built from query_detail and structured DOM current values; run query_dynamic_template and check_edit_compliance before edit_compliance.',
     };
+  }
+
+  function applyDomCurrentValuesToDraft(draft, sections, sourceTemplates) {
+    const tasks = draft.template_edit_request_list || [];
+    const taskByType = new Map(tasks.map((task) => [String(task.task_type), task]));
+    const sourceByType = new Map((sourceTemplates || []).map((task) => [String(task.task_type), task]));
+    applyProductIdentifierDomValue(taskByType.get('61'), sections, draft);
+    applyCaliforniaProp65DomValue(taskByType.get('4'), sections, draft);
+    [25, 60, 84].forEach((taskType) => {
+      applyRepresentativeDomValue(taskByType.get(String(taskType)), sourceByType.get(String(taskType)), sections, draft);
+    });
+    validateStructuredDraftTasks(tasks, sections, draft);
+  }
+
+  function applyProductIdentifierDomValue(task, sections, draft) {
+    if (!task) return;
+    const field = findSectionField(sections, (item) => normalizeText(item.label).includes('商品识别码'));
+    const code = normalizeProductIdentifierValue(field?.value);
+    if (!code) return;
+
+    task.properties = { '1100100115': [0] };
+    task.images = task.images || {};
+    task.input_text = {
+      '1100100115': {
+        multi_line_inputs: [{ name: code }],
+      },
+    };
+    task.status = 3;
+    task.task_status = 3;
+    draft.domOverrides.push({
+      task_type: 61,
+      field: 'input_text.1100100115.multi_line_inputs[0].name',
+      source: field?.valueSource || 'dom',
+    });
+  }
+
+  function applyCaliforniaProp65DomValue(task, sections, draft) {
+    if (!task) return;
+    const field = findSectionField(sections, (item) =>
+      item.sectionKey === 'californiaProposition65' && normalizeText(item.label).includes('警示类型'),
+    );
+    const value = normalizeText(field?.value);
+    if (!value || isPlaceholderValue(value)) return;
+    if (!/No Warning Applicable|无需警示/i.test(value)) return;
+
+    task.properties = {
+      ...(task.properties && typeof task.properties === 'object' ? task.properties : {}),
+      '1000000001': [1000100066],
+    };
+    if (!task.properties['1000000002']) task.properties['1000000002'] = [];
+    task.images = task.images || {};
+    task.input_text = task.input_text || {};
+    task.status = 3;
+    task.task_status = 3;
+    draft.domOverrides.push({
+      task_type: 4,
+      field: 'properties.1000000001',
+      source: field?.valueSource || 'dom',
+    });
+  }
+
+  function applyRepresentativeDomValue(task, sourceTemplate, sections, draft) {
+    if (!task || !sourceTemplate) return;
+    const taskType = Number(task.task_type);
+    const field = representativeFieldForTask(sections, taskType);
+    const value = normalizeText(field?.value);
+    if (!value || isPlaceholderValue(value)) return;
+
+    const rep = findMatchingRepDetail(sourceTemplate.rep_detail_list, value);
+    if (!rep) return;
+
+    task.rep_detail_list = [copyRepDetail(rep)];
+    task.status = 3;
+    task.task_status = 3;
+    draft.domOverrides.push({
+      task_type: taskType,
+      field: 'rep_detail_list[0]',
+      source: field?.valueSource || 'dom+query_detail',
+    });
+  }
+
+  function validateStructuredDraftTasks(tasks, sections, draft) {
+    tasks.forEach((task) => {
+      const taskType = Number(task.task_type);
+      if (taskType === 61 && !hasProductIdentifierValue(task)) {
+        draft.missing.push('task_type=61 商品识别码未读取到真实 input value');
+      }
+      if (taskType === 166 && !isTaskNotRequired(task) && hasPlaceholderSectionValues(sections, 'packagingMaterialInfo')) {
+        draft.missing.push('task_type=166 包装材料信息收集仍为请选择或空值');
+      }
+      if ([25, 60, 84].includes(taskType) && !isTaskNotRequired(task) && !hasRepDetail(task)) {
+        const field = representativeFieldForTask(sections, taskType);
+        if (field && !isPlaceholderValue(field.value)) {
+          draft.missing.push(`task_type=${taskType} ${task.task_name || '负责人'} DOM 只读取到文本，缺少 rep_id`);
+        }
+      }
+    });
+    draft.missing = Array.from(new Set(draft.missing));
+  }
+
+  function hasProductIdentifierValue(task) {
+    const value = task?.input_text?.['1100100115']?.multi_line_inputs?.[0]?.name;
+    return Boolean(normalizeProductIdentifierValue(value));
+  }
+
+  function hasRepDetail(task) {
+    return Array.isArray(task?.rep_detail_list) && task.rep_detail_list.some((rep) => rep?.rep_id && rep?.rep_name);
+  }
+
+  function isTaskNotRequired(task) {
+    return task?.is_not_required === true || task?.is_not_required === 1;
+  }
+
+  function findMatchingRepDetail(repDetailList, domValue) {
+    if (!Array.isArray(repDetailList)) return null;
+    const normalizedDomValue = normalizeRepName(domValue);
+    return repDetailList.find((rep) => normalizeRepName(rep?.rep_name) === normalizedDomValue) || null;
+  }
+
+  function copyRepDetail(rep) {
+    const result = {};
+    copyDefined(result, 'rep_type', rep.rep_type);
+    copyDefined(result, 'rep_id', rep.rep_id);
+    copyDefined(result, 'rep_name', rep.rep_name);
+    return result;
+  }
+
+  function normalizeRepName(value) {
+    return normalizeText(value)
+      .replace(/[’‘]/g, "'")
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLocaleLowerCase();
+  }
+
+  function representativeFieldForTask(sections, taskType) {
+    const labels = {
+      25: '欧盟负责人',
+      60: '制造商信息',
+      84: '土耳其负责人',
+    };
+    return findSectionField(sections, (item) => normalizeText(item.label).includes(labels[taskType]));
+  }
+
+  function hasPlaceholderSectionValues(sections, sectionKey) {
+    const fields = sectionFields(sections, sectionKey);
+    if (!fields.length) return false;
+    return fields.some((field) => isPlaceholderValue(field.value));
+  }
+
+  function findSectionField(sections, predicate) {
+    return sectionFields(sections).find(predicate) || null;
+  }
+
+  function sectionFields(sections, sectionKey) {
+    return (sections || [])
+      .filter((section) => !sectionKey || section.sectionKey === sectionKey)
+      .flatMap((section) => (section.fields || []).map((field) => ({ ...field, sectionKey: section.sectionKey })));
+  }
+
+  function normalizeProductIdentifierValue(value) {
+    const text = normalizeText(value);
+    if (!text || isPlaceholderValue(text)) return '';
+    if (/新增商品识别码|此处填写的商品识别码|删除/.test(text) && !/^[A-Za-z0-9][A-Za-z0-9_-]{2,}$/.test(text)) return '';
+    return text;
+  }
+
+  function isPlaceholderValue(value) {
+    const text = normalizeText(value);
+    return !text || text === '请选择' || text === '-' || text === '删除' || /新增商品识别码|此处填写的商品识别码/.test(text);
   }
 
   function copyDefined(target, key, value) {
@@ -1105,13 +1281,7 @@
     const labelNode = row.querySelector('.rocket-form-field-item-label label, label, .rocket-form-field-item-label');
     const label = normalizeText(labelNode?.innerText || labelNode?.textContent || '');
     if (!label) return null;
-
-    const valueNode =
-      row.querySelector('.rocket-select-selection-item') ||
-      row.querySelector('.rocket-select-selection-placeholder') ||
-      row.querySelector('.rocket-checkbox-wrapper-checked') ||
-      row.querySelector('.rocket-form-field-item-control-input-content') ||
-      row.querySelector('.rocket-form-field-item-control');
+    const rowValue = readRowValue(row, label);
 
     return {
       sectionKey: section.key,
@@ -1119,7 +1289,8 @@
       fieldKey: toFieldKey(label, `${section.key}Field${rowIndex + 1}`),
       label,
       type: detectRowType(row),
-      value: normalizeText(valueNode?.innerText || valueNode?.textContent || ''),
+      value: rowValue.value,
+      valueSource: rowValue.source,
       required: Boolean(row.querySelector('.rocket-form-field-item-required, [required], [aria-required="true"]')),
       domPath: buildDomPath(row, sectionIndex, rowIndex),
     };
@@ -1134,9 +1305,73 @@
       label,
       type: control.getAttribute('role') || control.getAttribute('type') || control.tagName.toLowerCase(),
       value: readControlValue(control),
+      valueSource: 'control',
       required: Boolean(control.required || control.getAttribute('aria-required') === 'true'),
       domPath: buildDomPath(control, sectionIndex, controlIndex),
     };
+  }
+
+  function readRowValue(row, label) {
+    const selectedValue = readSelectedComponentValue(row);
+    if (selectedValue) return { value: selectedValue, source: 'selected-component' };
+
+    const inputValue = readInputControlValues(row);
+    if (inputValue) return { value: inputValue, source: 'input-value' };
+
+    const checkboxValue = readCheckedValue(row);
+    if (checkboxValue) return { value: checkboxValue, source: 'checked-label' };
+
+    if (normalizeText(label).includes('商品识别码')) {
+      return { value: '', source: 'empty-product-identifier-input' };
+    }
+
+    const fallbackNode =
+      row.querySelector('.rocket-form-field-item-control-input-content') ||
+      row.querySelector('.rocket-form-field-item-control');
+    return {
+      value: normalizeText(fallbackNode?.innerText || fallbackNode?.textContent || ''),
+      source: 'container-text',
+    };
+  }
+
+  function readInputControlValues(row) {
+    const controls = Array.from(row.querySelectorAll('textarea, select, input'))
+      .filter((control) => {
+        const type = String(control.getAttribute('type') || '').toLowerCase();
+        return !['hidden', 'button', 'submit', 'reset', 'checkbox', 'radio'].includes(type) && isVisible(control);
+      });
+    const values = controls
+      .map((control) => normalizeText(control.value || control.getAttribute('value') || ''))
+      .filter((value) => value && !isPlaceholderValue(value));
+    return values.join('\n');
+  }
+
+  function readSelectedComponentValue(row) {
+    const selectedNodes = Array.from(row.querySelectorAll(
+      '.rocket-select-selection-item, .rocket-cascader-picker-label, [class*="selection-item"], [class*="selected-item"]',
+    )).filter(isVisible);
+    const values = selectedNodes
+      .map((node) => normalizeText(node.innerText || node.textContent || node.getAttribute('title') || ''))
+      .filter((value) => value && !isPlaceholderValue(value));
+    if (values.length) return values.join(' / ');
+
+    const placeholder = row.querySelector('.rocket-select-selection-placeholder');
+    return normalizeText(placeholder?.innerText || placeholder?.textContent || '');
+  }
+
+  function readCheckedValue(row) {
+    const checkedControls = Array.from(row.querySelectorAll('input[type="checkbox"], input[type="radio"]'))
+      .filter((control) => control.checked);
+    const values = checkedControls
+      .map((control) => {
+        const label = control.closest('label, .rocket-checkbox-wrapper, .rocket-radio-wrapper');
+        return normalizeText(label?.innerText || label?.textContent || control.value || '');
+      })
+      .filter(Boolean);
+    if (values.length) return values.join(' / ');
+
+    const checkedWrapper = row.querySelector('.rocket-checkbox-wrapper-checked, .rocket-radio-wrapper-checked');
+    return normalizeText(checkedWrapper?.innerText || checkedWrapper?.textContent || '');
   }
 
   function detectRowType(row) {

@@ -400,16 +400,20 @@ async function handleList(req, res, origin, url) {
 
 function templateUsability(template) {
   const info = template?.templateInfoJson || {};
+  const draft = info.submissionDraft || {};
   const missing = [];
   if (!info.ownership) missing.push('ownership');
   if (!info.product) missing.push('product');
   if (!Array.isArray(info.sections)) missing.push('sections');
   if (!info.interfaceSnapshot?.queryDetailCaptured) missing.push('interfaceSnapshot.queryDetailCaptured');
   if (!info.submissionDraft?.template_edit_request_list?.length) missing.push('submissionDraft.template_edit_request_list');
+  if (draft.readyForDirectSubmit === false && Array.isArray(draft.missing) && draft.missing.length) {
+    missing.push(...draft.missing.map((item) => `submissionDraft.${item}`));
+  }
 
   return {
     applicable: missing.length === 0,
-    missing,
+    missing: Array.from(new Set(missing)),
   };
 }
 

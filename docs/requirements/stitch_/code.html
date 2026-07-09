@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html class="dark" lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>合规中心商品池 - 货号批量管理</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            surface: "#0e141a",
+            "surface-low": "#111821",
+            "surface-mid": "#17212b",
+            "surface-high": "#202c36",
+            "line": "#33414d",
+            "line-soft": "#26323d",
+            "text-main": "#dde3eb",
+            "text-muted": "#9eabb6",
+            "sky": "#38bdf8",
+            "sky-soft": "rgba(56, 189, 248, .12)",
+            "teal": "#2dd4bf",
+            "amber": "#f59e0b",
+            "rose": "#fb7185",
+            "violet": "#a78bfa"
+          },
+          fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui"] },
+          borderRadius: {
+            DEFAULT: "4px",
+            md: "6px",
+            lg: "8px",
+            xl: "12px"
+          },
+          boxShadow: {
+            panel: "0 18px 40px rgba(0,0,0,.28)"
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    .material-symbols-outlined {
+      font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    body {
+      min-height: 100vh;
+      color: #dde3eb;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(56, 189, 248, .12), transparent 30%),
+        radial-gradient(circle at 92% 8%, rgba(45, 212, 191, .08), transparent 28%),
+        linear-gradient(180deg, #0e141a 0%, #101821 48%, #0b1118 100%);
+    }
+    .panel {
+      background: rgba(17, 24, 33, .88);
+      border: 1px solid #33414d;
+      box-shadow: 0 18px 40px rgba(0,0,0,.20);
+      backdrop-filter: blur(16px);
+    }
+    .thin-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+    .thin-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .thin-scrollbar::-webkit-scrollbar-thumb { background: #33414d; border-radius: 999px; }
+    .table-grid {
+      grid-template-columns: 44px minmax(210px, 1.3fr) minmax(150px, .8fr) minmax(180px, 1fr) minmax(160px, .8fr) minmax(180px, 1fr) 112px;
+    }
+    @media (max-width: 1100px) {
+      .shell { grid-template-columns: 76px 1fr; }
+      .nav-label, .brand-copy, .nav-section-title, .help-copy { display: none; }
+      .sidebar { width: 76px; }
+      .main { margin-left: 76px; }
+      .table-grid { min-width: 1120px; }
+    }
+  </style>
+</head>
+<body class="font-sans antialiased selection:bg-sky/30">
+  <header class="fixed inset-x-0 top-0 z-50 h-16 border-b border-line bg-[#0d141c]/92 backdrop-blur-xl">
+    <div class="flex h-full items-center justify-between px-6">
+      <div class="flex items-center gap-8">
+        <div class="flex items-center gap-3">
+          <div class="flex h-9 w-9 items-center justify-center rounded-lg border border-sky/35 bg-sky-soft text-sky">
+            <span class="material-symbols-outlined">hub</span>
+          </div>
+          <div>
+            <div class="text-lg font-bold tracking-tight text-white">Temu 批量管理台</div>
+            <div class="text-[10px] font-semibold uppercase tracking-[.18em] text-sky">Compliance Operations</div>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="relative flex h-9 w-9 items-center justify-center rounded border border-line bg-surface-low text-text-muted hover:border-sky/70 hover:text-sky" title="通知">
+          <span class="material-symbols-outlined text-[21px]">notifications</span>
+          <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-teal"></span>
+        </button>
+        <button class="flex h-9 w-9 items-center justify-center rounded border border-line bg-surface-low text-text-muted hover:border-sky/70 hover:text-sky" title="设置">
+          <span class="material-symbols-outlined text-[21px]">settings</span>
+        </button>
+        <div class="ml-2 flex items-center gap-3 border-l border-line pl-4">
+          <img class="h-9 w-9 rounded-full border border-line object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxwIIHYiALyyAWVbOR70As-JLk7U2IPwKpf5ZpAPB7-ZLfEBzwGr7rnmgco61dEI5q6jEMVBp8QJbx37aEk7830Vmaf0o3DM0P5fhoQ6SLX9V2gTm1Za54t-4AsCe-jl8hKXRVmt-2KnuX8Uf2SmRhCi3A8GTLWQYtT6lMiZUip6hWu6THCsfD8MPXBm3rTc2u_5TO5iVmEzgZAbjoP8F5qPk6AhELkqJoY2rwDpVHQNP_VAtP22D5biojlraZt7ndEIesQ6jpC3I" alt="管理员头像" />
+          <span class="hidden text-sm font-semibold text-white sm:inline">管理员</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <aside class="sidebar fixed bottom-0 left-0 top-16 z-40 w-72 border-r border-line bg-[#0c131b]/92 px-3 py-5 backdrop-blur-xl">
+    <div class="nav-section-title px-3 pb-2 text-[11px] font-bold uppercase tracking-[.14em] text-text-muted">接口文档</div>
+    <nav class="space-y-1">
+      <a class="flex items-center gap-3 rounded border-r-2 border-sky bg-sky-soft px-3 py-3 text-sm font-bold text-sky" href="#">
+        <span class="material-symbols-outlined text-[22px]">dashboard</span>
+        <span class="nav-label">合规中心</span>
+      </a>
+      <a class="flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/5 hover:text-white" href="#">
+        <span class="material-symbols-outlined text-[22px]">inventory_2</span>
+        <span class="nav-label">上新调价</span>
+      </a>
+      <a class="flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/5 hover:text-white" href="#">
+        <span class="material-symbols-outlined text-[22px]">sell</span>
+        <span class="nav-label">商品列表</span>
+      </a>
+      <a class="flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/5 hover:text-white" href="#">
+        <span class="material-symbols-outlined text-[22px]">query_stats</span>
+        <span class="nav-label">申报核价</span>
+      </a>
+      <a class="flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/5 hover:text-white" href="#">
+        <span class="material-symbols-outlined text-[22px]">rocket_launch</span>
+        <span class="nav-label">产品加站</span>
+      </a>
+      <a class="flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/5 hover:text-white" href="#">
+        <span class="material-symbols-outlined text-[22px]">storefront</span>
+        <span class="nav-label">店铺管理</span>
+      </a>
+    </nav>
+
+    <div class="absolute bottom-5 left-3 right-3 border-t border-line pt-4">
+      <a class="flex items-center gap-3 rounded px-3 py-3 text-sm font-semibold text-text-muted hover:bg-white/5 hover:text-white" href="#">
+        <span class="material-symbols-outlined text-[22px]">help</span>
+        <span class="help-copy">帮助中心</span>
+      </a>
+    </div>
+  </aside>
+
+  <main class="main ml-72 min-h-screen pt-16">
+    <div class="mx-auto max-w-[1520px] px-8 py-7">
+      <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div class="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-sky">
+            <span>商品管理</span>
+            <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+            <span>合规中心商品</span>
+          </div>
+          <h1 class="text-3xl font-bold tracking-tight text-white">合规中心商品列表</h1>
+          <p class="mt-2 max-w-3xl text-sm leading-6 text-text-muted">基于合规中心 `compliance_property/page_query` 的商品池，使用 SPU 与货号映射结果定位批量操作目标。</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="flex h-10 items-center gap-2 rounded border border-line bg-surface-low px-4 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">
+            <span class="material-symbols-outlined text-[20px]">download</span>
+            导出 SPU
+          </button>
+          <button class="flex h-10 items-center gap-2 rounded bg-sky px-4 text-sm font-bold text-[#06131c] hover:brightness-110">
+            <span class="material-symbols-outlined text-[20px]">sync</span>
+            拉取列表
+          </button>
+        </div>
+      </div>
+
+      <section class="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+        <div class="panel rounded-lg p-4">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="flex h-9 w-9 items-center justify-center rounded border border-sky/35 bg-sky-soft text-sky">
+                <span class="material-symbols-outlined text-[21px]">filter_alt</span>
+              </span>
+              <div>
+                <div class="text-sm font-bold text-white">筛选条件</div>
+                <div class="text-xs text-text-muted">合规中心 SPU 与本地货号索引组合过滤</div>
+              </div>
+            </div>
+            <span class="rounded-full border border-teal/30 bg-teal/10 px-3 py-1 text-xs font-bold text-teal">Chrome 已连接</span>
+          </div>
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label class="space-y-1.5">
+              <span class="text-[11px] font-bold uppercase tracking-[.12em] text-sky">货号 ExtCode</span>
+              <input class="h-10 w-full rounded border border-line bg-[#0c131b] px-3 text-sm text-white placeholder:text-text-muted/55 focus:border-sky focus:ring-1 focus:ring-sky" placeholder="BLM01 / BLM01ZU500VCIF-02" />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-[11px] font-bold uppercase tracking-[.12em] text-sky">商品 SPU ID</span>
+              <input class="h-10 w-full rounded border border-line bg-[#0c131b] px-3 text-sm text-white placeholder:text-text-muted/55 focus:border-sky focus:ring-1 focus:ring-sky" placeholder="多个值用逗号或空格分隔" />
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-[11px] font-bold uppercase tracking-[.12em] text-sky">快速筛选</span>
+              <select class="h-10 w-full rounded border border-line bg-[#0c131b] px-3 text-sm text-white focus:border-sky focus:ring-1 focus:ring-sky">
+                <option>不符合土耳其新规</option>
+                <option>EPR 计费信息</option>
+                <option>欧代即将过期</option>
+              </select>
+            </label>
+            <label class="space-y-1.5">
+              <span class="text-[11px] font-bold uppercase tracking-[.12em] text-sky">任务状态</span>
+              <select class="h-10 w-full rounded border border-line bg-[#0c131b] px-3 text-sm text-white focus:border-sky focus:ring-1 focus:ring-sky">
+                <option>全部状态</option>
+                <option>待上传</option>
+                <option>上传成功</option>
+                <option>待确认</option>
+              </select>
+            </label>
+          </div>
+          <div class="mt-4 flex flex-wrap items-center gap-2">
+            <button class="flex h-10 items-center gap-2 rounded bg-sky px-5 text-sm font-bold text-[#06131c] hover:brightness-110">
+              <span class="material-symbols-outlined text-[20px]">search</span>
+              查询
+            </button>
+            <button class="h-10 rounded border border-line bg-surface-low px-5 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">重置</button>
+            <button class="h-10 rounded border border-line bg-surface-low px-5 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">只看已匹配货号</button>
+          </div>
+        </div>
+
+        <div class="panel rounded-lg p-4">
+          <div class="mb-4 flex items-center justify-between">
+            <div>
+              <div class="text-sm font-bold text-white">拉取状态</div>
+              <div class="text-xs text-text-muted">合规中心商品池</div>
+            </div>
+            <span class="material-symbols-outlined text-sky">database</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="rounded border border-line-soft bg-white/[.025] p-3">
+              <div class="text-lg font-bold text-white">10,858</div>
+              <div class="mt-1 text-[11px] text-text-muted">合规商品</div>
+            </div>
+            <div class="rounded border border-line-soft bg-white/[.025] p-3">
+              <div class="text-lg font-bold text-teal">8,942</div>
+              <div class="mt-1 text-[11px] text-text-muted">已映射</div>
+            </div>
+            <div class="rounded border border-line-soft bg-white/[.025] p-3">
+              <div class="text-lg font-bold text-amber">1,916</div>
+              <div class="mt-1 text-[11px] text-text-muted">待确认</div>
+            </div>
+          </div>
+          <div class="mt-4 space-y-3 text-xs">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-text-muted">合规接口</span>
+              <span class="rounded bg-sky-soft px-2 py-1 font-mono text-sky">page_query</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-text-muted">匹配主键</span>
+              <span class="font-mono text-white">productId = spu_id</span>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-text-muted">当前页大小</span>
+              <span class="font-mono text-white">10 / 页</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel mb-5 rounded-lg p-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <button class="flex h-10 items-center gap-2 rounded border border-line bg-surface-low px-4 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">
+              <span class="material-symbols-outlined text-[20px]">upload_file</span>
+              上传货号清单
+            </button>
+            <button class="flex h-10 items-center gap-2 rounded border border-line bg-surface-low px-4 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">
+              <span class="material-symbols-outlined text-[20px]">join_inner</span>
+              生成映射
+            </button>
+            <button class="flex h-10 items-center gap-2 rounded border border-line bg-surface-low px-4 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">
+              <span class="material-symbols-outlined text-[20px]">rule_settings</span>
+              批量填写
+            </button>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button class="h-10 rounded border border-line bg-surface-low px-4 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">按当页操作</button>
+            <button class="h-10 rounded border border-line bg-surface-low px-4 text-sm font-bold text-text-main hover:border-sky/70 hover:text-sky">按筛选结果操作</button>
+            <button class="flex h-10 items-center gap-2 rounded bg-teal px-4 text-sm font-bold text-[#041312] hover:brightness-110">
+              <span class="material-symbols-outlined text-[20px]">done_all</span>
+              创建批量任务
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel overflow-hidden rounded-lg">
+        <div class="border-b border-line px-5 py-4">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div class="text-sm font-bold text-white">商品列表</div>
+              <div class="mt-1 text-xs text-text-muted">合规中心返回字段：SPU、Goods ID、任务列表；货号来自本地商品索引映射。</div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-text-muted">
+              <span class="h-2 w-2 rounded-full bg-teal"></span>
+              已同步 2026-07-04 18:32
+            </div>
+          </div>
+        </div>
+
+        <div class="thin-scrollbar overflow-x-auto">
+          <div class="min-w-[1180px]">
+            <div class="table-grid grid border-b border-line bg-[#0b121a] px-5 py-3 text-[11px] font-bold uppercase tracking-[.12em] text-sky">
+              <div><input class="h-4 w-4 rounded border-line bg-surface-low text-sky focus:ring-sky" type="checkbox" /></div>
+              <div>商品信息</div>
+              <div>SPU / Goods</div>
+              <div>货号映射</div>
+              <div>类目</div>
+              <div>合规任务</div>
+              <div>操作</div>
+            </div>
+
+            <div class="divide-y divide-line-soft">
+              <div class="table-grid grid items-center px-5 py-4 text-sm hover:bg-white/[.025]">
+                <div><input class="h-4 w-4 rounded border-line bg-surface-low text-sky focus:ring-sky" type="checkbox" /></div>
+                <div class="flex items-center gap-3">
+                  <img class="h-14 w-14 rounded border border-line object-cover" src="https://img.kwcdn.com/product/open/71bd38499d5f445eb46465425da7eadc-goods.jpeg?imageMogr2/thumbnail/120x120" alt="商品图" />
+                  <div class="min-w-0">
+                    <div class="truncate font-semibold text-white">Disney Stitch 多功能斜挎包</div>
+                    <div class="mt-1 truncate text-xs text-text-muted">JIT [已授权] Back to school season</div>
+                  </div>
+                </div>
+                <div class="space-y-1 font-mono text-xs">
+                  <div class="text-white">2608819698</div>
+                  <div class="text-text-muted">601101390151079</div>
+                </div>
+                <div>
+                  <div class="font-mono text-sm font-semibold text-white">BLM01ZK7D9Q2A</div>
+                  <div class="mt-1 flex gap-1">
+                    <span class="rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">已匹配</span>
+                    <span class="rounded-full border border-sky/30 bg-sky-soft px-2 py-0.5 text-[11px] font-bold text-sky">3 SKU</span>
+                  </div>
+                </div>
+                <div class="text-text-main">女士单肩包</div>
+                <div class="space-y-1">
+                  <span class="inline-flex rounded-full border border-amber/35 bg-amber/10 px-2 py-0.5 text-[11px] font-bold text-amber">土耳其负责人待上传</span>
+                  <span class="ml-1 inline-flex rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">商品识别码成功</span>
+                </div>
+                <div>
+                  <button class="text-sm font-bold text-sky hover:text-white">编辑</button>
+                </div>
+              </div>
+
+              <div class="table-grid grid items-center px-5 py-4 text-sm hover:bg-white/[.025]">
+                <div><input class="h-4 w-4 rounded border-line bg-surface-low text-sky focus:ring-sky" type="checkbox" /></div>
+                <div class="flex items-center gap-3">
+                  <img class="h-14 w-14 rounded border border-line object-cover" src="https://img.kwcdn.com/product/open/af307d27fa744a2ba2b70282abdeedce-goods.jpeg?imageMogr2/thumbnail/120x120" alt="商品图" />
+                  <div class="min-w-0">
+                    <div class="truncate font-semibold text-white">Disney Stitch 大容量瑜伽健身包</div>
+                    <div class="mt-1 truncate text-xs text-text-muted">Father's Day travel bag</div>
+                  </div>
+                </div>
+                <div class="space-y-1 font-mono text-xs">
+                  <div class="text-white">9349677448</div>
+                  <div class="text-text-muted">601100674825649</div>
+                </div>
+                <div>
+                  <div class="font-mono text-sm font-semibold text-white">BLM01YH6N2C9P</div>
+                  <div class="mt-1 flex gap-1">
+                    <span class="rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">已匹配</span>
+                    <span class="rounded-full border border-sky/30 bg-sky-soft px-2 py-0.5 text-[11px] font-bold text-sky">4 SKU</span>
+                  </div>
+                </div>
+                <div class="text-text-main">手提健身包</div>
+                <div class="space-y-1">
+                  <span class="inline-flex rounded-full border border-amber/35 bg-amber/10 px-2 py-0.5 text-[11px] font-bold text-amber">包装材料待上传</span>
+                  <span class="ml-1 inline-flex rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">欧盟负责人成功</span>
+                </div>
+                <div>
+                  <button class="text-sm font-bold text-sky hover:text-white">编辑</button>
+                </div>
+              </div>
+
+              <div class="table-grid grid items-center px-5 py-4 text-sm hover:bg-white/[.025]">
+                <div><input class="h-4 w-4 rounded border-line bg-surface-low text-sky focus:ring-sky" type="checkbox" /></div>
+                <div class="flex items-center gap-3">
+                  <div class="flex h-14 w-14 items-center justify-center rounded border border-line bg-surface-low text-text-muted">
+                    <span class="material-symbols-outlined">image</span>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="truncate font-semibold text-white">Disney Mickey 旅行收纳包</div>
+                    <div class="mt-1 truncate text-xs text-text-muted">Cable storage organizer</div>
+                  </div>
+                </div>
+                <div class="space-y-1 font-mono text-xs">
+                  <div class="text-white">1984049686</div>
+                  <div class="text-text-muted">601101873496508</div>
+                </div>
+                <div>
+                  <div class="font-mono text-sm font-semibold text-white">BLM01Y7L0N97RC</div>
+                  <div class="mt-1 flex gap-1">
+                    <span class="rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">已匹配</span>
+                    <span class="rounded-full border border-sky/30 bg-sky-soft px-2 py-0.5 text-[11px] font-bold text-sky">3 SKU</span>
+                  </div>
+                </div>
+                <div class="text-text-main">手提包收纳袋</div>
+                <div class="space-y-1">
+                  <span class="inline-flex rounded-full border border-rose/35 bg-rose/10 px-2 py-0.5 text-[11px] font-bold text-rose">韩国公示待上传</span>
+                  <span class="ml-1 inline-flex rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">制造商成功</span>
+                </div>
+                <div>
+                  <button class="text-sm font-bold text-sky hover:text-white">编辑</button>
+                </div>
+              </div>
+
+              <div class="table-grid grid items-center px-5 py-4 text-sm hover:bg-white/[.025]">
+                <div><input class="h-4 w-4 rounded border-line bg-surface-low text-sky focus:ring-sky" type="checkbox" /></div>
+                <div class="flex items-center gap-3">
+                  <div class="flex h-14 w-14 items-center justify-center rounded border border-line bg-surface-low text-text-muted">
+                    <span class="material-symbols-outlined">image</span>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="truncate font-semibold text-white">Disney Stitch 复古单肩包</div>
+                    <div class="mt-1 truncate text-xs text-text-muted">Daily commute crossbody bag</div>
+                  </div>
+                </div>
+                <div class="space-y-1 font-mono text-xs">
+                  <div class="text-white">1410668177</div>
+                  <div class="text-text-muted">601101872950231</div>
+                </div>
+                <div>
+                  <div class="font-mono text-sm font-semibold text-text-muted">未匹配</div>
+                  <div class="mt-1 flex gap-1">
+                    <span class="rounded-full border border-amber/35 bg-amber/10 px-2 py-0.5 text-[11px] font-bold text-amber">待映射</span>
+                  </div>
+                </div>
+                <div class="text-text-main">女士单肩包</div>
+                <div class="space-y-1">
+                  <span class="inline-flex rounded-full border border-amber/35 bg-amber/10 px-2 py-0.5 text-[11px] font-bold text-amber">土耳其负责人待上传</span>
+                  <span class="ml-1 inline-flex rounded-full border border-teal/30 bg-teal/10 px-2 py-0.5 text-[11px] font-bold text-teal">其他合规成功</span>
+                </div>
+                <div>
+                  <button class="text-sm font-bold text-sky hover:text-white">编辑</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-[#0b121a] px-5 py-4 text-sm text-text-muted">
+              <div>共 10,858 条，当前显示 4 条样例</div>
+              <div class="flex items-center gap-2">
+                <button class="flex h-9 w-9 items-center justify-center rounded border border-line bg-surface-low text-text-muted hover:border-sky/70 hover:text-sky">
+                  <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+                <button class="h-9 min-w-9 rounded bg-sky px-3 font-bold text-[#06131c]">1</button>
+                <button class="flex h-9 w-9 items-center justify-center rounded border border-line bg-surface-low text-text-muted hover:border-sky/70 hover:text-sky">
+                  <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+                <select class="h-9 rounded border border-line bg-surface-low px-3 text-sm text-white focus:border-sky focus:ring-1 focus:ring-sky">
+                  <option>10 条/页</option>
+                  <option>20 条/页</option>
+                  <option>50 条/页</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
